@@ -1,0 +1,47 @@
+# A股量化选股系统 V35 OpenSource - Python 3.12+
+# 核心数据与ML引擎依赖
+
+# ============= 数据源 =============
+tushare>=1.2.89
+akshare>=1.12.50
+requests
+lxml
+beautifulsoup4
+
+# ============= 数据处理 =============
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+joblib>=1.3.0
+
+# ============= 深度学习 (PyTorch) =============
+torch>=2.0.0
+torchvision
+# 注意: torch-geometric 及其依赖项建议通过 conda 安装或从官方轮子安装
+# torch-geometric
+# torch-scatter
+# torch-cluster
+# torch-sparse
+
+# ============= 机器学习 =============
+xgboost>=2.0.0
+lightgbm>=4.0.0
+catboost>=1.2.0
+scikit-learn>=1.3.0
+pyarrow
+
+# ============= NLP/Transformer =============
+transformers>=4.30.0
+sentencepiece
+ftfy
+
+# ============= Web 框架 =============
+django>=4.2,<5.1
+django-cors-headers
+
+# ============= 可选与辅助 =============
+shap
+matplotlib
+python-dotenv
+baostock
+

@@ -1,0 +1,33 @@
+name: stock_quant
+channels:
+  - pytorch
+  - pyg
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pytorch
+  - torchvision
+  - cpuonly
+  - pyg
+  - pytorch-scatter
+  - pytorch-cluster
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - joblib
+  - xgboost
+  - lightgbm
+  - catboost
+  - django
+  - django-cors-headers
+  - requests
+  - lxml
+  - beautifulsoup4
+  - matplotlib
+  - shap
+  - pip
+  - pip:
+    - tushare
+    - akshare
