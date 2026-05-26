@@ -487,36 +487,80 @@ class V19EnhancedEngine:
         #   1. 选股的核心问题是"哪只更好"，不是"涨多少"
         #   2. 截面排名自动消除市场方向性偏差
         #   3. 模型直接优化IC（排名质量），而非MSE（误差大小）
-        # 标签：cs_rank ∈ [0, 1]，0=截面最差，1=截面最好
-        # 映射到 [-1, 1] 以匹配模型输出范围
+        #
+        # 【V35关键修复】多周期混合标签
+        #   问题：A股20日噪音远大于信号，IC>0.03即及格但实盘意义有限
+        #   修复：5d（权重0.5）+ 10d（0.3）+ 20d（0.2）混合标签
+        #   理由：5日截面排名在A股IC显著高于20日（0.05~0.08 vs 0.02~0.04）
         # =================================================================
-        df['future_ret_20d'] = df.groupby('ts_code')['close'].pct_change(20).shift(-20)
+        df['future_ret_5d']  = df.groupby('ts_code')['close'].pct_change(5).shift(-5)
         df['future_ret_10d'] = df.groupby('ts_code')['close'].pct_change(10).shift(-10)
+        df['future_ret_20d'] = df.groupby('ts_code')['close'].pct_change(20).shift(-20)
 
         # 截面排名：每个交易日内部排名（私募核心）
-        # rank(pct=True) → [0, 1]，越高表示当天内表现越好
-        df['cs_rank_20d'] = df.groupby('trade_date')['future_ret_20d'].rank(pct=True)
+        df['cs_rank_5d']  = df.groupby('trade_date')['future_ret_5d'].rank(pct=True)
         df['cs_rank_10d'] = df.groupby('trade_date')['future_ret_10d'].rank(pct=True)
+        df['cs_rank_20d'] = df.groupby('trade_date')['future_ret_20d'].rank(pct=True)
 
-        df_clean = df.dropna(subset=['future_ret_20d', 'future_ret_10d',
-                                      'cs_rank_20d', 'cs_rank_10d'])
+        # 【V35核心】多周期加权混合标签（5d:0.5 + 10d:0.3 + 20d:0.2）
+        # 偏重短期信号，A股短期截面排名IC显著优于长期
+        df['cs_rank_blend'] = (
+            df['cs_rank_5d'].fillna(0.5)  * 0.5 +
+            df['cs_rank_10d'].fillna(0.5) * 0.3 +
+            df['cs_rank_20d'].fillna(0.5) * 0.2
+        )
+
+        # =================================================================
+        # 【V35关键修复】基本面数据滞后修正（Anti-Look-Ahead）
+        # ─────────────────────────────────────────────────────────────────
+        # 问题：PE/PB/ROE/ROA等基本面数据在Tushare daily_basic中与股价
+        #       同一天返回，但这些数据反映的是最近季报，可能已滞后数月。
+        #       直接用当天基本面预测未来 → 训练-预测时间线不一致。
+        # 修复：将基本面特征按个股shift(1)，确保训练用的基本面是
+        #       "上一交易日已知"的数据，杜绝前瞻偏差。
+        # =================================================================
+        _fundamental_cols = ['pe', 'pb', 'roe', 'roa', 'revenue_yoy', 'profit_yoy',
+                            'total_mv', 'circ_mv', 'turnover_rate']
+        for _fc in _fundamental_cols:
+            if _fc in df.columns:
+                df[f'{_fc}_lag1'] = df.groupby('ts_code')[_fc].shift(1)
+        logger.info("  基本面滞后修正: 已将PE/PB/ROE等shift(1)（杜绝前瞻偏差）")
+
+        df_clean = df.dropna(subset=['future_ret_5d', 'future_ret_10d', 'future_ret_20d',
+                                      'cs_rank_5d', 'cs_rank_10d', 'cs_rank_20d',
+                                      'cs_rank_blend'])
 
         if len(df_clean) < 1000:
             logger.warning(f"有效样本过少（{len(df_clean)}），跳过模型训练")
             return False
 
-        # 基础特征（不含规则因子，给双模型和AI用）
+        # 基础特征（优先使用滞后版，杜绝前瞻偏差）
         _basic_feats = [
-            'total_mv', 'circ_mv', 'pe', 'pb', 'roe', 'roa',
-            'revenue_yoy', 'profit_yoy', 'vol', 'turnover_rate',
+            'total_mv_lag1', 'circ_mv_lag1', 'pe_lag1', 'pb_lag1',
+            'roe_lag1', 'roa_lag1',
+            'revenue_yoy_lag1', 'profit_yoy_lag1',
+            'vol', 'turnover_rate_lag1',
             'pmt_return_5d', 'pmt_return_20d', 'pmt_return_60d',
             'vol_ratio_raw', 'volat_hist_20d', 'rsi', 'kdj_k', 'kdj_j',
             'macd', 'ma20_distance', 'boll_position', 'multi_oversold_flag',
             'size_score', 'size_mkt_cap_log',
         ]
-        feature_cols = [c for c in _basic_feats if c in df_clean.columns]
+        # 如果滞后版不存在，降级使用原版
+        _fallback_map = {
+            'total_mv_lag1': 'total_mv', 'circ_mv_lag1': 'circ_mv',
+            'pe_lag1': 'pe', 'pb_lag1': 'pb',
+            'roe_lag1': 'roe', 'roa_lag1': 'roa',
+            'revenue_yoy_lag1': 'revenue_yoy', 'profit_yoy_lag1': 'profit_yoy',
+            'turnover_rate_lag1': 'turnover_rate',
+        }
+        feature_cols = []
+        for c in _basic_feats:
+            if c in df_clean.columns:
+                feature_cols.append(c)
+            elif c in _fallback_map and _fallback_map[c] in df_clean.columns:
+                feature_cols.append(_fallback_map[c])
         actual_input_dim = len(feature_cols)
-        logger.info(f"  AI引擎实际输入特征维度: {actual_input_dim}")
+        logger.info(f"  AI引擎实际输入特征维度: {actual_input_dim}（含滞后基本面）")
 
         # ========== 保存特征列，供后续预测时对齐 ==========
         self._ai_feature_cols = feature_cols
@@ -568,15 +612,22 @@ class V19EnhancedEngine:
         X_df_frame = df_clean[feature_cols].fillna(0)   # 保留 DataFrame 格式
         X_df = X_arr   # 向后兼容
 
-        # 【私募核心】训练标签：截面排名 cs_rank ∈ [0,1] → [-1, 1]
-        # 截面排名天然有界，无需 Winsorize
-        _y20_s = pd.Series(df_clean['cs_rank_20d'].fillna(0.5).values)
+        # 【V35核心】训练标签：多周期混合截面排名 → [-1, 1]
+        # blend = 0.5×cs_rank_5d + 0.3×cs_rank_10d + 0.2×cs_rank_20d
+        # 偏重短期（5日IC在A股显著高于20日），截面排名天然有界无需Winsorize
+        _y_blend_s = pd.Series(df_clean['cs_rank_blend'].fillna(0.5).values)
+        _y5_s  = pd.Series(df_clean['cs_rank_5d'].fillna(0.5).values)
         _y10_s = pd.Series(df_clean['cs_rank_10d'].fillna(0.5).values)
-        y_20d = ((_y20_s - 0.5) * 2.0).values.astype(np.float32)
+        _y20_s = pd.Series(df_clean['cs_rank_20d'].fillna(0.5).values)
+        y_blend = ((_y_blend_s - 0.5) * 2.0).values.astype(np.float32)
+        y_5d  = ((_y5_s  - 0.5) * 2.0).values.astype(np.float32)
         y_10d = ((_y10_s - 0.5) * 2.0).values.astype(np.float32)
-        logger.info(f"  标签：截面排名 20d[{_y20_s.min():.3f}→{_y20_s.max():.3f}] "
+        y_20d = ((_y20_s - 0.5) * 2.0).values.astype(np.float32)
+        logger.info(f"  标签：blend[{_y_blend_s.min():.3f}→{_y_blend_s.max():.3f}] "
+                    f"5d[{_y5_s.min():.3f}→{_y5_s.max():.3f}] "
                     f"10d[{_y10_s.min():.3f}→{_y10_s.max():.3f}] "
-                    f"映射至[-1,+1]")
+                    f"20d[{_y20_s.min():.3f}→{_y20_s.max():.3f}] "
+                    f"→ 映射至[-1,+1]，主标签:blend(偏短周期)")
 
         trained = False
 
@@ -586,7 +637,7 @@ class V19EnhancedEngine:
                 logger.info("  🤖 训练XGBoost V18...")
                 val_size = max(50, int(len(X_arr) * 0.15))
                 X_tr, X_va = X_arr[:-val_size], X_arr[-val_size:]
-                y_tr, y_va = y_20d[:-val_size], y_20d[-val_size:]
+                y_tr, y_va = y_blend[:-val_size], y_blend[-val_size:]
 
                 self.xgb_model.fit(
                     X_tr, y_tr,
@@ -609,7 +660,7 @@ class V19EnhancedEngine:
                 else:
                     split = int(len(X_df) * 0.8)
                     X_tr, X_va = X_df[:split], X_df[split:]
-                    y_tr, y_va = y_20d[:split], y_20d[split:]
+                    y_tr, y_va = y_blend[:split], y_blend[split:]
 
                     trade_dates_tr = None
                     if 'trade_date' in df_clean.columns:
@@ -653,9 +704,9 @@ class V19EnhancedEngine:
                 dates = pd.to_datetime(df_clean.get('trade_date')) if 'trade_date' in df_clean.columns else None
                 val_size = max(50, int(len(X_df_frame) * 0.15))
                 X_tr = X_df_frame.iloc[:-val_size]
-                y_tr = y_20d[:-val_size]
+                y_tr = y_blend[:-val_size]
                 X_va = X_df_frame.iloc[-val_size:]
-                y_va = y_20d[-val_size:]
+                y_va = y_blend[-val_size:]
                 d_tr = dates.iloc[:-val_size] if dates is not None else None
 
                 self.trend_model.fit(X_tr, y_tr, X_val=X_va, y_val=y_va, dates=d_tr)
@@ -736,12 +787,20 @@ class V19EnhancedEngine:
             except Exception as e:
                 logger.error(f"  小市值因子: {e}")
 
-        # Step 2.5：【私募核心】VIF正交化因子筛选
+        # Step 2.5：基本面数据滞后修正（与训练一致，杜绝前瞻偏差）
+        _fundamental_cols = ['pe', 'pb', 'roe', 'roa', 'revenue_yoy', 'profit_yoy',
+                            'total_mv', 'circ_mv', 'turnover_rate']
+        for _fc in _fundamental_cols:
+            if _fc in df.columns:
+                df[f'{_fc}_lag1'] = df.groupby('ts_code')[_fc].shift(1)
+
+        # Step 2.6：【私募核心】VIF正交化因子筛选
         # 从150+规则因子中筛掉共线性冗余，保留~30个独立因子
+        # 基本面使用_lag1版本（与训练特征一致）
         _all_factor_candidates = [
-            # 基本面
-            'total_mv', 'circ_mv', 'pe', 'pb', 'roe', 'roa',
-            'revenue_yoy', 'profit_yoy', 'vol', 'turnover_rate',
+            # 基本面（滞后修正版）
+            'total_mv_lag1', 'circ_mv_lag1', 'pe_lag1', 'pb_lag1', 'roe_lag1', 'roa_lag1',
+            'revenue_yoy_lag1', 'profit_yoy_lag1', 'vol', 'turnover_rate_lag1',
             # 动量（5日/20日/60日 → VIF会筛掉冗余）
             'pmt_return_5d', 'pmt_return_20d', 'pmt_return_60d', 'pmt_return_1d',
             'rev_5d_reversal', 'rev_1d_reversal',
@@ -779,24 +838,44 @@ class V19EnhancedEngine:
                 df, _factor_available, max_vif=5.0, max_factors=30
             )
             # 确保关键因子不被VIF误删（私募保底：总市值、PE、量比、动量20、波动率）
-            _essential = ['total_mv', 'pe', 'vol_ratio_raw', 'pmt_return_20d', 'volat_hist_20d']
+            # 使用_lag1版本（与训练一致）
+            _essential = ['total_mv_lag1', 'pe_lag1', 'vol_ratio_raw', 'pmt_return_20d', 'volat_hist_20d']
+            # 如果_lag1不存在，降级为原版
+            for _i, _ec in enumerate(_essential):
+                if _ec not in df.columns and _ec.endswith('_lag1'):
+                    _orig = _ec.replace('_lag1', '')
+                    if _orig in df.columns:
+                        _essential[_i] = _orig
             for _ec in _essential:
                 if _ec in _factor_available and _ec not in _orthogonal:
                     _orthogonal.append(_ec)
             feature_cols = _orthogonal
             logger.info(f"  🔬 VIF正交化: {len(_factor_available)}→{len(feature_cols)}个独立因子")
         else:
-            # 因子太少，回退到静态候选集
+            # 因子太少，回退到静态候选集（优先_lag1版本）
             _model_feat_candidates = [
-                'total_mv', 'circ_mv', 'pe', 'pb', 'roe', 'roa',
-                'revenue_yoy', 'profit_yoy', 'vol', 'turnover_rate',
+                'total_mv_lag1', 'circ_mv_lag1', 'pe_lag1', 'pb_lag1', 'roe_lag1', 'roa_lag1',
+                'revenue_yoy_lag1', 'profit_yoy_lag1', 'vol', 'turnover_rate_lag1',
                 'pmt_return_5d', 'pmt_return_20d', 'pmt_return_60d',
                 'vol_ratio_raw', 'volat_hist_20d', 'rsi', 'kdj_k', 'kdj_j',
                 'macd', 'ma20_distance', 'boll_position', 'multi_oversold_flag',
                 'size_score', 'size_mkt_cap_log', 'macd_hist', 'macd_golden',
                 'reversal_signal', 'kdj_low_golden', 'rsi_divergence',
             ]
-            feature_cols = [c for c in _model_feat_candidates if c in df.columns]
+            # 如果_lag1不存在，降级为原版
+            _fb_map = {
+                'total_mv_lag1': 'total_mv', 'circ_mv_lag1': 'circ_mv',
+                'pe_lag1': 'pe', 'pb_lag1': 'pb', 'roe_lag1': 'roe', 'roa_lag1': 'roa',
+                'revenue_yoy_lag1': 'revenue_yoy', 'profit_yoy_lag1': 'profit_yoy',
+                'turnover_rate_lag1': 'turnover_rate',
+            }
+            _resolved = []
+            for c in _model_feat_candidates:
+                if c in df.columns:
+                    _resolved.append(c)
+                elif c in _fb_map and _fb_map[c] in df.columns:
+                    _resolved.append(_fb_map[c])
+            feature_cols = _resolved
             logger.info(f"  回退静态特征集: {len(feature_cols)}个")
         X = df[feature_cols].fillna(0).values.astype(float) if feature_cols else None
 
