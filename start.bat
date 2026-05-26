@@ -1,13 +1,12 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul
 title A-Stock Quant System V35
 
 echo.
-echo   ╔══════════════════════════════════════════════╗
-echo   ║   A-Share Quant System · V35 Private Equity  ║
-echo   ║   A股量化选股系统 · V35 私募级                  ║
-echo   ╚══════════════════════════════════════════════╝
+echo   * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+echo   *  A-Share Quant System - V35 Private Equity           *
+echo   *  A-share Quantitative Stock Selection System         *
+echo   * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 echo.
 
 :: ── Resolve Python path ──
@@ -97,20 +96,18 @@ if defined CONDA_BASE (
 :: ── No working Python found ──
 :NO_ENV
 echo.
-echo   ╔══════════════════════════════════════════════════════════════╗
-echo   ║  No working Python environment found                        ║
-echo   ║  未找到可用的 Python 环境                                     ║
-echo   ║                                                              ║
-echo   ║  Setup options:                                              ║
-echo   ║                                                              ║
-echo   ║  1. Conda (recommended):                                     ║
-echo   ║     conda env create -f environment.yml                      ║
-echo   ║     Then re-run start.bat                                    ║
-echo   ║                                                              ║
-echo   ║  2. Pip (may be slow):                                       ║
-echo   ║     pip install -r requirements.txt                          ║
-echo   ║                                                              ║
-echo   ╚══════════════════════════════════════════════════════════════╝
+echo   ---------------------------------------------------------
+echo   No working Python environment found.
+echo.
+echo   Setup options:
+echo.
+echo   1. Conda (recommended):
+echo      conda env create -f environment.yml
+echo      Then re-run start.bat
+echo.
+echo   2. Pip (may be slow, torch works best with conda):
+echo      pip install -r requirements.txt
+echo   ---------------------------------------------------------
 echo.
 pause
 exit /b 1
@@ -124,28 +121,20 @@ if exist .env (
 )
 if !HAS_TOKEN! equ 0 (
     echo.
-    echo ╔══════════════════════════════════════════════════════════════╗
-    echo ║  [!] Tushare Token not configured                          ║
-    echo ║  [!] Tushare Token 尚未配置                                 ║
-    echo ║                                                              ║
-    echo ║  1. Register at https://tushare.pro to get your Token       ║
-    echo ║  2. After startup, paste Token in the Web UI and click Save ║
-    echo ║                                                              ║
-    echo ║  1. 去 https://tushare.pro 注册获取 Token                    ║
-    echo ║  2. 启动后在网页顶部输入框粘贴 Token 并保存                   ║
-    echo ╚══════════════════════════════════════════════════════════════╝
+    echo   ---------------------------------------------------------
+    echo   [!] Tushare Token not configured.
+    echo       Register at https://tushare.pro to get your Token.
+    echo       After startup, paste Token in the Web UI and save.
+    echo   ---------------------------------------------------------
     echo.
 )
 
 :: ── Launch ──
 echo.
 echo [Starting] Launching server...
-echo [启动] 正在启动服务器...
 echo.
 echo   Open in browser: http://127.0.0.1:8000
-echo   浏览器打开: http://127.0.0.1:8000
-echo.
-echo   Press Ctrl+C to stop ^| 按 Ctrl+C 停止
+echo   Press Ctrl+C to stop
 echo.
 
 start "" /b cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:8000"
