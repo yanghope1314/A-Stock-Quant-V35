@@ -115,13 +115,44 @@ SERVERCHAN_SENDKEY=your_sendkey
 > Free tier: 5 messages/day. System auto-prioritizes: Risk Alerts > Timing > Picks > Weekly.
 > 免费版每日5条，系统按优先级自动推送：风险告警 > 择时 > 选股 > 周报。
 
-### 5. Launch | 启动
+### 5. Launch (One-Click) | 一键启动
 
+**Windows** — double-click `start.bat`
+
+**Mac / Linux** — run in terminal:
+```bash
+bash start.sh
+```
+
+**Manual start** (if scripts don't work):
 ```bash
 python manage.py runserver
 ```
 
-Open `http://127.0.0.1:8000` in browser, click "Start Analysis" | 浏览器打开后点击「开始选股分析」
+The script will:
+- Check Python & auto-install missing dependencies
+- Warn if Tushare Token is not yet configured
+- Launch the server & auto-open browser at `http://127.0.0.1:8000`
+
+> Click "Start Analysis" in the Web UI to begin | 在网页中点击「开始选股分析」即可
+
+### First-Time User Flow | 新用户操作流程
+
+1. Register at [tushare.pro](https://tushare.pro) → get your API Token
+2. Launch with `start.bat` / `start.sh`
+3. Paste Token in the top bar of the Web UI → click Save
+4. (Optional) Paste ServerChan SendKey in the "WeChat" panel → click Save
+5. Click "Start Analysis" — the system fetches data, trains models, and outputs stock picks
+6. Check WeChat for daily push notifications
+
+### 新用户操作流程
+
+1. 去 [tushare.pro](https://tushare.pro) 注册 → 获取 API Token
+2. 双击 `start.bat`（Windows）或运行 `bash start.sh`（Mac/Linux）
+3. 在网页顶部输入框粘贴 Token → 点击保存
+4. （可选）在「微信通知」面板粘贴 Server酱 SendKey → 点击保存
+5. 点击「开始选股分析」→ 系统自动拉数据、训练模型、输出选股结果
+6. 微信接收每日推送通知
 
 ---
 

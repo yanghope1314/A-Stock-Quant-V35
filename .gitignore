@@ -64,7 +64,6 @@ checkup.py
 main.py
 vision.py
 Chrome.bat
-start.bat
 pyproject.toml
 uv.lock
 
