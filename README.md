@@ -46,8 +46,8 @@
 
 ### 1. 克隆项目
 ```bash
-git clone https://github.com/yanghope1314/my_stock_project.git
-cd my_stock_project
+git clone https://github.com/yanghope1314/A-Stock-Quant-V35.git
+cd A-Stock-Quant-V35
 ```
 
 ### 2. 安装依赖
@@ -86,7 +86,7 @@ python manage.py runserver
 ## 系统架构
 
 ```
-my_stock_project/
+A-Stock-Quant-V35/
 ├── stock_app/                        # 核心量化引擎
 │   ├── views.py                      # Django 视图调度中心 (3155行)
 │   ├── factor_engine.py              # 150+ 规则因子计算 [独立模块]
