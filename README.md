@@ -1,180 +1,238 @@
-# A股量化选股系统 · V35 私募级
+# A-Stock Quant System · V35 Private Equity Edition
+
+## A股量化选股系统 · V35 私募级
 
 [![Status](https://img.shields.io/badge/Status-V35_Private_Equity-teal)](https://github.com/yanghope1314)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Framework-Django_4.2-green)](https://www.djangoproject.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-150+ 技术因子 · 双模型 Stacking · AI 图神经网络 · 大盘择时 · 微信通知
+**150+ Technical Factors · Dual-Model Stacking · AI Graph Neural Networks · Market Timing · WeChat Alerts**
 
-> **开源声明**: 本项目从私募实战代码重构而来，仅供量化研究参考，不构成任何投资建议。
+**150+ 技术因子 · 双模型 Stacking · AI 图神经网络 · 大盘择时 · 微信通知**
 
----
-
-## 核心特性
-
-### 因子引擎
-- **150+ 规则因子**: 动量(5d/20d/60d)、反转、量价、MACD、KDJ、RSI、William %R、布林带、价格位置、Amihud流动性
-- **VIF 正交化**: 迭代方差膨胀因子筛选，剔除共线性冗余，保留 ~30 个独立因子
-- **截面中性化**: 同一天内股票间排名比较（非跨历史），行业中性化仅用最新截面
-
-### 模型体系
-- **双模型融合**: 涨势股模型(InterpretableXGBV18) + 抄底股模型，IC加权 Stacking
-- **AI 集成**: MLP / Transformer / StockGNN / SpatioTemporalGAT / SmartXGNN(XGB+NN+CatBoost)
-- **动态权重**: 基于 Spearman IC 的滚动窗口权重优化，市场状态自适应
-
-### 择时 & 风控
-- **大盘择时**: 全市场截面均值 → 市场方向判断，熊市自动禁止趋势信号，仅保留抄底
-- **风险中性化**: 行业 + 风格双重剥离
-- **组合优化**: 风险平价 + 最大回撤约束
-- **止损巡检**: 内置持仓止损监控面板
-
-### 微信通知（免费）
-- **Server酱** (免费版5条/天): 优先推送预测结果和风险告警
-- **PushPlus**: 备用通道自动切换
-- **推送优先级**: 风险告警 > 择时变更 > 每日选股 > 周报
-- 超过每日限额自动丢弃低优先级消息
+> Open Source Statement | 开源声明: This project is refactored from private equity production code. For quantitative research reference only. Not financial advice.
+> 本项目从私募实战代码重构而来，仅供量化研究参考，不构成任何投资建议。
 
 ---
 
-## 快速开始
+## Core Features | 核心特性
 
-### 前置条件
+### Factor Engine | 因子引擎
+- **150+ Rule-Based Factors**: Momentum (5d/20d/60d), Reversal, Volume-Price, MACD, KDJ, RSI, William %R, Bollinger Bands, Price Position, Amihud Liquidity
+- **VIF Orthogonalization**: Iterative Variance Inflation Factor screening removes collinear redundancy, retaining ~30 independent factors
+- **Cross-Sectional Neutralization**: Within-day stock ranking (not cross-historical), sector neutralization using latest cross-section only
+
+### Model Architecture | 模型体系
+- **Dual-Model Fusion**: Trend model (InterpretableXGBV18) + Bottom-Fishing model, IC-weighted Stacking
+- **AI Ensemble**: MLP / Transformer / StockGNN / SpatioTemporalGAT / SmartXGNN (XGB+NN+CatBoost)
+- **Dynamic Weights**: Rolling-window Spearman IC optimization, market-regime adaptive
+
+### Market Timing & Risk Control | 择时 & 风控
+- **Market Timing**: Cross-sectional mean → market direction signal. Bear market auto-blocks trend signals, bottom-fishing only
+- **Risk Neutralization**: Sector + style factor dual stripping
+- **Portfolio Optimization**: Risk parity + max drawdown constraints
+- **Stop-Loss Monitor**: Built-in position stop-loss dashboard
+
+### WeChat Notifications (Free) | 微信通知（免费）
+- **ServerChan** (Free: 5 msgs/day): Priority push for predictions & risk alerts
+- **PushPlus**: Auto-failover backup channel
+- **Priority Queue**: Risk Alert > Timing Change > Daily Picks > Weekly Report
+- Auto-drops low-priority messages when daily limit reached
+
+---
+
+## V35 Prediction Accuracy | V35 预测精度
+
+Four root causes of prediction inaccuracy — all resolved:
+
+| Issue | Status | Fix |
+|-------|--------|-----|
+| 1. Single 20d label (noisy) | Fixed | Multi-horizon blended: `0.5×cs_rank_5d + 0.3×cs_rank_10d + 0.2×cs_rank_20d` — 5d IC significantly higher in A-shares |
+| 2. Fundamental look-ahead bias | Fixed | PE/PB/ROE/ROA/rev/profit/mv/turnover all `shift(1)` per stock — training & inference consistent `_lag1` features |
+| 3. Missing market timing | Fixed | Bear market auto-blocks trend signals, bottom-fishing only |
+| 4. Factor collinearity | Fixed | VIF iterative screening: 150+ → ~30 independent factors |
+
+---
+
+## Quick Start | 快速开始
+
+### Prerequisites | 前置条件
 - Python 3.12+
-- [Tushare](https://tushare.pro) 账号（免费注册，注册即送积分）
-- （可选）[Server酱](https://sct.ftqq.com) 账号（免费微信推送）
+- [Tushare](https://tushare.pro) account (free registration, points included)
+- (Optional) [ServerChan](https://sct.ftqq.com) account (free WeChat push)
 
-### 1. 克隆项目
+### 1. Clone | 克隆
+
 ```bash
 git clone https://github.com/yanghope1314/A-Stock-Quant-V35.git
 cd A-Stock-Quant-V35
 ```
 
-### 2. 安装依赖
+### 2. Install Dependencies | 安装依赖
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. 配置 Tushare Token
-**方法一（推荐）**: 启动后在 Web 界面顶部输入框粘贴 Token，点击保存按钮。
+### 3. Configure Tushare Token | 配置 Tushare Token
+
+**Method 1 (Recommended)**: After startup, paste your Token in the Web UI top bar and click Save.
+
+**方法一（推荐）**: 启动后在 Web 界面顶部输入框粘贴 Token，点击保存。
+
+**Method 2**: Create `.env` in the project root:
 
 **方法二**: 在项目根目录创建 `.env` 文件：
+
 ```
-TUSHARE_TOKEN=你的tushare_token
+TUSHARE_TOKEN=your_tushare_token
 ```
 
+> Register at [tushare.pro](https://tushare.pro) → Profile → API Token → Copy
 > 去 [tushare.pro](https://tushare.pro) 注册 → 个人主页 → 接口Token → 复制
+>
+> **Recommended points ≥ 2000** for full functionality (money flow, limit data, margin, shareholder analysis). Points below threshold auto-degrade gracefully.
+> **建议积分 ≥ 2000** 以使用全部高级接口。积分不足时系统自动降级。
 
-### 4. 配置微信通知（可选）
+### 4. Configure WeChat Notifications (Optional) | 配置微信通知（可选）
+
+**Method 1 (Recommended)**: After startup, paste your ServerChan SendKey in the "WeChat Notify" panel and click Save.
+
 **方法一（推荐）**: 启动后在 Web 界面「微信通知」面板粘贴 Server酱 SendKey，点击保存。
 
+**Method 2**: Add to `.env`:
+
 **方法二**: 在 `.env` 文件中添加：
+
 ```
-SERVERCHAN_SENDKEY=你的sendkey
+SERVERCHAN_SENDKEY=your_sendkey
 ```
 
+> Register at [sct.ftqq.com](https://sct.ftqq.com) → Get SendKey → Bind WeChat via QR
 > 去 [sct.ftqq.com](https://sct.ftqq.com) 注册 → 获取 SendKey → 微信扫码绑定
+>
+> Free tier: 5 messages/day. System auto-prioritizes: Risk Alerts > Timing > Picks > Weekly.
+> 免费版每日5条，系统按优先级自动推送：风险告警 > 择时 > 选股 > 周报。
 
-### 5. 启动系统
+### 5. Launch | 启动
+
 ```bash
 python manage.py runserver
 ```
-浏览器打开 `http://127.0.0.1:8000`，点击「开始选股分析」。
+
+Open `http://127.0.0.1:8000` in browser, click "Start Analysis" | 浏览器打开后点击「开始选股分析」
 
 ---
 
-## 系统架构
+## Architecture | 系统架构
 
 ```
 A-Stock-Quant-V35/
-├── stock_app/                        # 核心量化引擎
-│   ├── views.py                      # Django 视图调度中心 (3155行)
-│   ├── factor_engine.py              # 150+ 规则因子计算 [独立模块]
-│   ├── market_timing.py              # 大盘择时信号 [独立模块]
-│   ├── factor_selector.py            # VIF 正交化筛选 [独立模块]
-│   ├── wechat_notify.py              # 微信通知推送 [独立模块]
-│   ├── tree_models.py                # XGBoost/LightGBM/CatBoost 树模型
-│   ├── risk_neutralizer.py           # 风险中性化
-│   ├── portfolio_optimizer.py        # 组合优化
-│   ├── dynamic_weight_optimizer.py   # 动态 IC 权重
-│   ├── config_v19.py                 # 全局配置
-│   ├── models/                       # AI模型 (MLP/Transformer/GNN)
+├── stock_app/                           # Core Quant Engine | 核心量化引擎
+│   ├── views.py                         # Django View Dispatcher
+│   ├── factor_engine.py                 # 150+ Rule Factor Computation [Standalone]
+│   ├── market_timing.py                 # Market Timing Signals [Standalone]
+│   ├── factor_selector.py              # VIF Orthogonal Screening [Standalone]
+│   ├── wechat_notify.py                # WeChat Push Notifications [Standalone]
+│   ├── tree_models.py                  # XGBoost / LightGBM / CatBoost
+│   ├── risk_neutralizer.py             # Risk Neutralization
+│   ├── portfolio_optimizer.py          # Portfolio Optimization
+│   ├── dynamic_weight_optimizer.py     # Dynamic IC Weighting
+│   ├── config_v19.py                   # Global Configuration
+│   ├── upgrade_v19_nlp_sentiment.py    # NLP Sentiment Engine (RoBERTa)
+│   ├── upgrade_v19_small_cap_factors.py # Small-Cap Factor Engine
+│   ├── backtest.py                     # Backtest Engine
+│   ├── sell_logic.py                   # Exit Strategy / Stop-Loss
+│   ├── transaction_cost_model.py       # Transaction Cost Model
+│   ├── model_persistence.py            # Model Save/Load
+│   ├── models/                         # AI Models (MLP/Transformer/GNN)
 │   │   └── ai_models.py
 │   └── templates/stock_app/
-│       └── index.html                # 前端 Dashboard
-├── models/                           # 训练好的模型权重 (gitignore)
-├── requirements.txt                  # Python 依赖
-├── manage.py                         # Django 入口
-├── .gitignore                        # 安全排除规则
-└── .env                              # Token 配置 (gitignore, 不会提交)
+│       └── index.html                  # Frontend Dashboard
+├── models/                              # Trained Model Weights (gitignored)
+├── requirements.txt                     # Python Dependencies
+├── manage.py                            # Django Entry Point
+├── .gitignore                           # Security Exclusions
+└── .env                                 # Token Config (gitignored, never committed)
 ```
 
 ---
 
-## 安全说明
+## Security | 安全说明
 
-- **Token 保护**: 所有 Token/SendKey 通过 `.env` 文件或浏览器界面保存，`.env` 已在 `.gitignore` 中排除
-- **永不提交**: `models/`、`*.log`、`db.sqlite3`、`.env`、`__pycache__/` 均在 gitignore
-- **开源检查清单**:
-  - [x] 无硬编码 Token
-  - [x] 无硬编码密码/密钥
-  - [x] `.env` 排除在版本控制之外
-  - [x] 模型权重文件排除在版本控制之外
-  - [x] 日志文件排除在版本控制之外
-
----
-
-## 数据源说明
-
-| 接口 | 用途 | 积分要求 |
-|------|------|----------|
-| `daily` | 日线行情 | 免费 |
-| `daily_basic` | 估值/市值/换手率 | 免费 |
-| `money_flow` | 资金流向(主力/散户) | 120积分 |
-| `limit_list` | 涨跌停数据 | 120积分 |
-| `pledge_stat` | 股权质押 | 免费 |
-| `hsgt_top10` | 沪深股通十大成交 | 免费 |
-| `margin` | 融资融券 | 120积分 |
-| `forecast` | 业绩预告 | 免费 |
-| `stk_limit` | 涨停价格（动态） | 2000积分 |
-| `top10_holders` | 十大股东 | 2000积分 |
-| `top_inst` | 机构持股 | 2000积分 |
-
-> **建议积分 ≥ 2000** 以使用全部高级接口（资金流向、涨跌停、融资融券、股东分析等）。
-> 注册即送积分，每日签到可累积。积分不足时系统自动降级跳过高级因子。
+- **Token Protection**: All tokens/keys stored via `.env` or browser UI. `.env` excluded in `.gitignore`
+- **Never Committed**: `models/`, `*.log`, `db.sqlite3`, `.env`, `__pycache__/`
+- **Security Checklist | 安全检查清单**:
+  - [x] No hardcoded tokens | 无硬编码 Token
+  - [x] No hardcoded passwords/keys | 无硬编码密码/密钥
+  - [x] `.env` excluded from version control | `.env` 排除在版本控制之外
+  - [x] Model weights excluded | 模型权重文件已排除
+  - [x] Log files excluded | 日志文件已排除
 
 ---
 
-## 常见问题
+## Data Sources | 数据源说明
 
-**Q: 点击分析后报错「数据获取失败」？**
-A: 检查 Tushare Token 是否正确保存。点击顶部「检测连接」按钮确认后端状态。
+| API | Purpose | Points Required |
+|-----|---------|-----------------|
+| `daily` | Daily K-line | Free |
+| `daily_basic` | Valuation / Market Cap / Turnover | Free |
+| `money_flow` | Capital Flow (Institutional/Retail) | 120 |
+| `limit_list` | Limit Up/Down Data | 120 |
+| `pledge_stat` | Share Pledge Statistics | Free |
+| `hsgt_top10` | Northbound Top 10 | Free |
+| `margin` | Margin Trading | 120 |
+| `forecast` | Earnings Forecast | Free |
+| `stk_limit` | Dynamic Limit Price | 2000 |
+| `top10_holders` | Top 10 Shareholders | 2000 |
+| `top_inst` | Institutional Holdings | 2000 |
 
-**Q: 微信收不到通知？**
-A: 确认 Server酱 SendKey 已保存，重启 Django 服务。免打扰时段(23:00-07:00)不推送。
-
-**Q: 模型训练很慢？**
-A: 首次训练(XGBoost+LightGBM+CatBoost+Optuna)需要约5-10分钟。后续加载缓存模型只需数秒。
-
-**Q: pip install 报错？**
-A: 建议使用 Python 3.12，`torch` 和 `catboost` 可能需要根据系统单独安装。
-
----
-
-## 免责声明
-
-本系统仅供量化策略研究和技术学习使用，**不构成任何投资建议**。
-
-- 股市有风险，投资需谨慎
-- 历史回测不代表未来收益
-- 使用者应自行承担交易风险
-- 作者不对使用本系统产生的任何盈亏负责
+> Points ≥ 2000 recommended for all advanced APIs. Systems auto-degrade when points are insufficient.
+> 建议积分 ≥ 2000 以使用全部高级接口。积分不足时系统自动降级跳过高级因子。
 
 ---
 
-## 作者
+## FAQ | 常见问题
 
-**Hope Yang** · 大连海事大学 · 大数据管理与应用
+**Q: "Data fetch failed" error after clicking Analyze? | 点击分析后报错「数据获取失败」？**
+
+A: Check Tushare Token is saved correctly. Click "Check Connection" to verify backend status.
+检查 Tushare Token 是否正确保存。点击顶部「检测连接」按钮确认后端状态。
+
+**Q: Not receiving WeChat notifications? | 微信收不到通知？**
+
+A: Verify ServerChan SendKey is saved, restart Django. Quiet hours (23:00-07:00) suppress all pushes.
+确认 Server酱 SendKey 已保存，重启 Django 服务。免打扰时段(23:00-07:00)不推送。
+
+**Q: Model training is slow? | 模型训练很慢？**
+
+A: First training (XGBoost+LightGBM+CatBoost+Optuna) takes ~5-10 min. Subsequent runs load cached models in seconds.
+首次训练约需5-10分钟。后续加载缓存模型只需数秒。
+
+**Q: pip install fails? | pip install 报错？**
+
+A: Use Python 3.12. `torch` and `catboost` may need system-specific installation.
+建议使用 Python 3.12。`torch` 和 `catboost` 可能需要根据系统单独安装。
+
+---
+
+## Disclaimer | 免责声明
+
+**This system is for quantitative research and technical study only. It does NOT constitute any investment advice.**
+
+**本系统仅供量化策略研究和技术学习使用，不构成任何投资建议。**
+
+- Markets involve risk. Invest with caution. | 股市有风险，投资需谨慎
+- Historical backtests do not guarantee future returns. | 历史回测不代表未来收益
+- Users bear full responsibility for their trading decisions. | 使用者应自行承担交易风险
+- The author assumes no liability for any profits or losses from use of this system. | 作者不对使用本系统产生的任何盈亏负责
+
+---
+
+## Author | 作者
+
+**Hope Yang** · Dalian Maritime University · Big Data Management & Application
 
 [![GitHub](https://img.shields.io/badge/GitHub-yanghope1314-24292e?logo=github)](https://github.com/yanghope1314)
 
