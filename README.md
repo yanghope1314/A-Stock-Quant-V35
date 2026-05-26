@@ -71,9 +71,18 @@ cd A-Stock-Quant-V35
 
 ### 2. Install Dependencies | 安装依赖
 
+**Method 1 — Conda (Recommended)**:
+```bash
+conda env create -f environment.yml
+conda activate stock_quant
+```
+
+**Method 2 — pip (fallback)**:
 ```bash
 pip install -r requirements.txt
 ```
+> Note: `torch` and `pyg` are best installed via conda. If pip install fails on these, use Method 1.
+> 注意：`torch` 和 `pyg` 建议通过 conda 安装。如果 pip 失败请用方式一。
 
 ### 3. Configure Tushare Token | 配置 Tushare Token
 
