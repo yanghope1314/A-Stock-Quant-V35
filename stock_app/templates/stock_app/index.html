@@ -858,8 +858,8 @@
             </select>
         </div>
         <div class="ctrl-group" style="display:flex; align-items:center; gap:8px;">
-            <span class="ctrl-label">API Token</span>
-            <input class="ctrl-input" id="tushareToken" type="password" placeholder="输入 Tushare Token" style="width:130px;">
+            <span class="ctrl-label">API Token <a href="https://tushare.pro" target="_blank" title="去 tushare.pro 注册获取免费 Token" style="color:var(--teal);text-decoration:none;font-size:11px">ⓘ</a></span>
+            <input class="ctrl-input" id="tushareToken" type="password" placeholder="粘贴 Tushare Token" style="width:140px;">
             <button class="btn-train" onclick="saveToken()" style="padding: 8px 12px;" title="保存 Token 到配置">
                 <i class="fas fa-save"></i>
             </button>
@@ -920,11 +920,21 @@
         <div class="chart-card" style="flex: 1;">
             <div class="chart-title">微信通知 <span class="chart-live-badge" id="notifyBadge">未配置</span></div>
             <div style="padding:16px;font-size:13px;color:var(--text2);line-height:1.8">
-                <p>📱 <b>Server酱</b> 免费推送选股结果到微信</p>
-                <p style="margin-top:8px">① 访问 <a href="https://sct.ftqq.com/" target="_blank" style="color:var(--teal)">sct.ftqq.com</a> 注册</p>
-                <p>② 获取 SendKey</p>
-                <p>③ 设置环境变量: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--gold)">SERVERCHAN_SENDKEY=你的key</code></p>
-                <p style="margin-top:8px;color:var(--text3)">重启服务后自动生效。每日免费500条。</p>
+                <p>📱 <b>Server酱</b> — 选股结果免费推送到微信</p>
+                <p style="margin-top:8px;font-size:12px;color:var(--text3)">
+                    ① 访问 <a href="https://sct.ftqq.com/" target="_blank" style="color:var(--teal)">sct.ftqq.com</a> 注册
+                    &nbsp;② 获取 SendKey
+                </p>
+                <div style="display:flex;gap:6px;margin-top:10px">
+                    <input id="sendKeyInput" type="password" placeholder="粘贴 Server酱 SendKey"
+                           style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text1);padding:8px 10px;border-radius:6px;font-size:12px;font-family:var(--mono)">
+                    <button onclick="saveSendKey()" style="background:var(--teal);color:#000;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap">
+                        💾 保存
+                    </button>
+                </div>
+                <p style="margin-top:8px;font-size:11px;color:var(--text3)">
+                    ⚡ 保存后重启服务生效 · 每日免费500条 · 免打扰时段23:00-07:00
+                </p>
             </div>
         </div>
     </div>
@@ -1010,11 +1020,46 @@
         <div class="exit-results" id="exitResults"></div>
     </div>
 
-    <!-- 空状态提示 -->
+    <!-- 空状态 / 首次使用指南 -->
     <div class="empty" id="emptyState">
-        <i class="fas fa-chart-line"></i>
-        <h3>等待分析</h3>
-        <p>点击"开始选股分析"启动 V19 私募级引擎</p>
+        <i class="fas fa-rocket" style="font-size:48px;color:var(--teal);margin-bottom:16px;display:block"></i>
+        <h3>V35 私募级量化选股系统</h3>
+        <p style="margin-bottom:24px;color:var(--text2)">开源 · 免费 · 150+因子 · AI驱动</p>
+
+        <div style="text-align:left;max-width:520px;margin:0 auto;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px 24px">
+            <h4 style="color:var(--teal);margin-bottom:12px;font-size:15px">🚀 快速开始（3步）</h4>
+
+            <div style="margin-bottom:14px">
+                <div style="font-weight:600;color:var(--text1);font-size:14px">① 获取 Tushare Token</div>
+                <div style="color:var(--text2);font-size:13px;margin-top:4px">
+                    访问 <a href="https://tushare.pro" target="_blank" style="color:var(--blue)">tushare.pro</a> 注册，
+                    在"个人主页 → 接口Token"复制你的Token。<br>
+                    <span style="color:var(--text3)">注册即送积分，每日免费调用足够个人量化使用。</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px">
+                <div style="font-weight:600;color:var(--text1);font-size:14px">② 填入 Token</div>
+                <div style="color:var(--text2);font-size:13px;margin-top:4px">
+                    在上方 <b style="color:var(--gold)">API Token</b> 输入框中粘贴，点击 💾 保存。
+                    成功后点击"开始选股分析"即可运行。
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px">
+                <div style="font-weight:600;color:var(--text1);font-size:14px">③ （可选）微信通知</div>
+                <div style="color:var(--text2);font-size:13px;margin-top:4px">
+                    访问 <a href="https://sct.ftqq.com" target="_blank" style="color:var(--blue)">sct.ftqq.com</a> 注册 Server酱，
+                    获取 SendKey。<br>
+                    在下方 <b style="color:var(--gold)">微信通知</b> 面板中填入，选股结果自动推送到微信。
+                </div>
+            </div>
+        </div>
+
+        <p style="margin-top:20px;font-size:13px;color:var(--text3)">
+            ⚠️ 本系统仅供学习研究，不构成投资建议。<br>
+            GitHub: <a href="https://github.com/yanghope1314" target="_blank" style="color:var(--blue)">yanghope1314</a>
+        </p>
     </div>
 
     <!-- Toast 提示框 -->
@@ -1188,6 +1233,39 @@
             }
         } catch(e) {
             showToast('网络错误', '无法保存 Token', 'error');
+        }
+    }
+
+    /* ═══ 保存 Server酱 SendKey ═══ */
+    async function saveSendKey() {
+        const input = document.getElementById('sendKeyInput');
+        const key = input.value.trim();
+        if (!key) {
+            showToast('提示', '请先粘贴 Server酱 SendKey', 'error');
+            return;
+        }
+        if (key.length < 10 || key.length > 80) {
+            showToast('格式错误', 'SendKey 格式不正确，请检查后重试', 'error');
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/save_sendkey/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sendkey: key })
+            });
+            const d = await res.json();
+            if (d.status === 'success') {
+                document.getElementById('notifyBadge').textContent = '已配置';
+                document.getElementById('notifyBadge').style.background = 'rgba(0,214,143,.2)';
+                document.getElementById('notifyBadge').style.color = 'var(--green)';
+                showToast('保存成功', 'SendKey已保存，重启服务后微信通知生效', 'success');
+                input.value = '';
+            } else {
+                showToast('保存失败', d.message || '未知错误', 'error');
+            }
+        } catch(e) {
+            showToast('网络错误', '无法保存 SendKey', 'error');
         }
     }
 

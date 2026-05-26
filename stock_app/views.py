@@ -3036,6 +3036,43 @@ def save_token(request):
             return JsonResponse({'status': 'success', 'message': 'Token 保存成功'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@csrf_exempt
+def save_sendkey(request):
+    """保存 Server酱 SendKey 到 .env 文件（追加，不覆盖 TUSHARE_TOKEN）"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sendkey = data.get('sendkey', '').strip()
+            if not sendkey:
+                return JsonResponse({'status': 'error', 'message': 'SendKey 不能为空'})
+            if not (10 <= len(sendkey) <= 80):
+                return JsonResponse({'status': 'error', 'message': 'SendKey 格式不正确'})
+
+            env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+
+            # 保留已有 TUSHARE_TOKEN，追加/更新 SERVERCHAN_SENDKEY
+            existing = {}
+            if os.path.exists(env_path):
+                for line in open(env_path, encoding='utf-8'):
+                    line = line.strip()
+                    if '=' in line and not line.startswith('#'):
+                        k, v = line.split('=', 1)
+                        existing[k.strip()] = v.strip()
+
+            existing['SERVERCHAN_SENDKEY'] = sendkey
+
+            with open(env_path, 'w', encoding='utf-8') as f:
+                for k, v in existing.items():
+                    f.write(f'{k}={v}\n')
+
+            os.environ['SERVERCHAN_SENDKEY'] = sendkey
+            return JsonResponse({'status': 'success', 'message': 'SendKey 保存成功，重启服务后微信通知生效'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+
 @csrf_exempt
 def get_kline_data(request):
     """Tushare K线数据接口 - 支持日/周/月 + 复权"""
