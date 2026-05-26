@@ -193,3 +193,17 @@ AUTO_BACKTEST = {
     'enable': False,
     'rebalance_freq': 20,
 }
+
+# ============= 微信通知配置（Server酱，免费） =============
+# 注册地址: https://sct.ftqq.com/  →  获取 SendKey 填入下方
+# 每日免费额度 500 条，足够个人量化使用
+WECHAT_NOTIFY_CONFIG = {
+    'enable': True,
+    'sendkey': os.environ.get('SERVERCHAN_SENDKEY', ''),  # 从环境变量读取
+    'push_weekly_report': True,       # 每周选股报告
+    'push_daily_signal': True,        # 每日选股信号
+    'push_risk_alert': True,          # 风险告警（止损/市场大跌）
+    'push_market_timing': True,       # 择时信号变更
+    'quiet_hours': [23, 7],           # 免打扰时段（23点-7点不推送）
+    'max_stocks_in_msg': 20,          # 单条消息最多展示股票数
+}

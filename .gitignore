@@ -47,3 +47,30 @@ recs_*.json
 1.py
 quant_v8_*.log
 recs_*.json
+
+# Claude / Agent files (local only)
+.ars-tmp/
+.claude/
+.playwright-mcp/
+.mcp.json
+CLAUDE.md
+HANDOFF.md
+MEMORY.md
+TASKS.md
+memory/
+workspace/
+.python-version
+checkup.py
+main.py
+vision.py
+Chrome.bat
+start.bat
+pyproject.toml
+uv.lock
+
+# Sensitive config (double insurance)
+.env
+.env.*
+*.pem
+*.key
+credentials.json

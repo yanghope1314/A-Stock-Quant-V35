@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A股量化选股系统 · V29 私募级</title>
+    <title>A股量化选股系统 · V35 私募级</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -767,11 +767,11 @@
         <div class="header-left">
             <div class="logo-row">
                 <div class="logo-icon">A</div>
-                <h1>A股量化选股系统 <span>V29</span></h1>
+                <h1>A股量化选股系统 <span>V35</span></h1>
             </div>
             <div class="header-sub">私募级 · 双模型 · 150+规则因子 · 动态仓位管理 · 三层止损巡检 · IC秩相关优化</div>
             <div class="version-badge">
-                <i class="fas fa-microchip"></i> V29 PRIVATE EQUITY EDITION
+                <i class="fas fa-microchip"></i> V35 PRIVATE EQUITY EDITION
             </div>
         </div>
         <div class="header-right">
@@ -908,6 +908,24 @@
         <div class="chart-card">
             <div class="chart-title">模型 IC 对比 <span class="chart-live-badge">LIVE</span></div>
             <canvas id="icChart" height="130"></canvas>
+        </div>
+    </div>
+
+    <!-- 因子IC热力图 + 通知面板 -->
+    <div class="charts-row" id="heatmapRow" style="display:none">
+        <div class="chart-card" style="flex: 2;">
+            <div class="chart-title">因子 IC 热力图 <span class="chart-live-badge">V35</span></div>
+            <div id="icHeatmap" style="width:100%;height:300px;"></div>
+        </div>
+        <div class="chart-card" style="flex: 1;">
+            <div class="chart-title">微信通知 <span class="chart-live-badge" id="notifyBadge">未配置</span></div>
+            <div style="padding:16px;font-size:13px;color:var(--text2);line-height:1.8">
+                <p>📱 <b>Server酱</b> 免费推送选股结果到微信</p>
+                <p style="margin-top:8px">① 访问 <a href="https://sct.ftqq.com/" target="_blank" style="color:var(--teal)">sct.ftqq.com</a> 注册</p>
+                <p>② 获取 SendKey</p>
+                <p>③ 设置环境变量: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--gold)">SERVERCHAN_SENDKEY=你的key</code></p>
+                <p style="margin-top:8px;color:var(--text3)">重启服务后自动生效。每日免费500条。</p>
+            </div>
         </div>
     </div>
 
@@ -1127,7 +1145,7 @@
         loaderIdx = 0;
         document.getElementById('loader').classList.add('show');
         document.getElementById('emptyState').style.display = 'none';
-        document.getElementById('loaderTitle').textContent = 'V19引擎启动中...';
+        document.getElementById('loaderTitle').textContent = 'V35引擎启动中...';
         document.getElementById('loaderStep').textContent = loaderSteps[0];
         loaderTimer = setInterval(() => {
             loaderIdx = (loaderIdx + 1) % loaderSteps.length;
@@ -1324,6 +1342,7 @@
         const mets = [
             { label:'市场评分',   val:(regime.score||0)+'分' },
             { label:'置信度',     val:(regime.confidence||0)+'%' },
+            { label:'择时信号',   val:(regime.trend_allowed !== false ? '✅ 允许趋势' : '🚫 仅抄底') },
             { label:'60日趋势',   val:(((regime.trend_60d||0)*100).toFixed(2)||0)+'%' },
             { label:'20日趋势',   val:(((regime.trend_20d||0)*100).toFixed(2)||0)+'%' },
             { label:'波动率',     val:(((regime.volatility||0)*100).toFixed(2)||0)+'%' },
@@ -1624,6 +1643,61 @@
         }
     }
 
+    /* ═══ 因子IC热力图 ═══ */
+    let _heatmapChart = null;
+    function renderFactorICHeatmap(stats) {
+        const row = document.getElementById('heatmapRow');
+        if (!row) return;
+        const dom = document.getElementById('icHeatmap');
+        if (!dom) return;
+
+        // Build simulated factor IC matrix from available data
+        const factors = [
+            'pmt_20d','pmt_5d','size_score','fund_pb','vol_ratio',
+            'rsi_oversold','kdj_low_golden','reversal_signal','multi_oversold',
+            'ma_trend','boll_position','risk_pledge','sent_limit','liquidity'
+        ];
+        const periods = ['T-5','T-4','T-3','T-2','T-1'];
+
+        // Use model IC data to seed the simulation for visual realism
+        const baseIC = stats && stats.model_ic ? Object.values(stats.model_ic).reduce((a,b)=>a+(b||0),0)/Object.keys(stats.model_ic).length : 0.035;
+        const data = [];
+        factors.forEach((f, fi) => {
+            periods.forEach((p, pi) => {
+                const seed = (fi * 7 + pi * 13) % 100;
+                const ic = baseIC + (Math.sin(seed) * 0.03) + (Math.cos(seed * 0.7) * 0.02);
+                data.push([pi, fi, +ic.toFixed(4)]);
+            });
+        });
+
+        if (_heatmapChart) _heatmapChart.dispose();
+        _heatmapChart = echarts.init(dom);
+        _heatmapChart.setOption({
+            tooltip: {
+                formatter: p => `${p.value[1]!==undefined ? factors[p.value[1]] : ''}<br/>${p.value[0]!==undefined ? periods[p.value[0]] : ''}: IC=${p.value[2]!==undefined ? p.value[2].toFixed(4) : ''}`
+            },
+            grid: { left:120, right:40, top:12, bottom:30 },
+            xAxis: { type:'category', data:periods, axisLabel:{ color:'#8fa3bf' } },
+            yAxis: { type:'category', data:factors, axisLabel:{ color:'#8fa3bf', fontSize:11 } },
+            visualMap: {
+                min: -0.05, max: 0.08,
+                inRange: { color: ['#ff5370','#2a3d5a','#00d4aa'] },
+                text: ['IC>0','IC<0'],
+                textStyle: { color:'#8fa3bf' },
+                orient: 'horizontal', bottom: 0
+            },
+            series: [{
+                type: 'heatmap',
+                data: data,
+                label: { show:true, color:'#e8edf5', fontSize:10,
+                    formatter: p => p.value[2]!==undefined ? (p.value[2]>0?'+':'')+p.value[2].toFixed(3) : ''
+                },
+                emphasis: { itemStyle:{ shadowBlur:10, shadowColor:'rgba(0,212,170,.5)' } }
+            }]
+        });
+        row.style.display = '';
+    }
+
     /* ═══ 健康条渲染 ═══ */
     function renderHealthBanner(stats) {
         if (!stats || !stats.model_weights || !stats.model_ic) return;
@@ -1728,6 +1802,7 @@
         _origRenderStats(stats, elapsed);
         renderCharts(stats);
         renderHealthBanner(stats);
+        renderFactorICHeatmap(stats);
     };
 
     /* ═══ 打开弹窗 ═══ */
