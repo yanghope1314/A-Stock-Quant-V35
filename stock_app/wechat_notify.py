@@ -61,15 +61,27 @@ _WEEKLY_REPORT_HEADER = """## 本周选股周报
 
 
 class WeChatNotifier:
-    """微信通知器 — Server酱 + PushPlus 双通道"""
+    """微信通知器 — Server酱 + PushPlus 双通道
+
+    Server酱免费版限制：每日5条。
+    优先级：风险告警(最高) > 每日选股 > 择时变更 > 周报(最低)
+    超过5条自动丢弃低优先级消息。
+    """
+
+    # 消息优先级（数字越小越优先）
+    PRIORITY_RISK = 0
+    PRIORITY_TIMING = 1
+    PRIORITY_DAILY = 2
+    PRIORITY_WEEKLY = 3
 
     def __init__(self):
         self.enabled = WECHAT_NOTIFY_CONFIG.get('enable', True)
         self.sendkey = WECHAT_NOTIFY_CONFIG.get('sendkey', '')
         self.quiet_start, self.quiet_end = WECHAT_NOTIFY_CONFIG.get('quiet_hours', [23, 7])
         self.max_stocks = WECHAT_NOTIFY_CONFIG.get('max_stocks_in_msg', 20)
+        self.daily_limit = 5  # Server酱免费版每日5条
 
-        # PushPlus 备用通道 token（免费注册 pushplus.plus）
+        # PushPlus 备用通道 token
         self.pp_token = WECHAT_NOTIFY_CONFIG.get('pushplus_token', '')
 
         self._last_send = 0.0
@@ -143,8 +155,15 @@ class WeChatNotifier:
             logger.error(f"PushPlus发送失败: {e}")
             return False
 
-    def _send(self, title: str, content: str) -> bool:
-        """双通道发送，自动降级"""
+    def _reset_daily_counter(self):
+        """跨天重置计数器"""
+        today = datetime.now().day
+        if today != self._today:
+            self._send_count_today = 0
+            self._today = today
+
+    def _send(self, title: str, content: str, priority: int = 2) -> bool:
+        """双通道发送，自动降级。超出每日5条限额自动丢弃"""
         if not self.enabled:
             return False
         if self._is_quiet_hours():
@@ -154,11 +173,23 @@ class WeChatNotifier:
             logger.debug(f"频率限制，跳过: {title}")
             return False
 
+        self._reset_daily_counter()
+
+        if self._send_count_today >= self.daily_limit:
+            logger.warning(
+                f"今日推送已达上限({self.daily_limit}条)，丢弃低优先级消息: [{priority}] {title}"
+            )
+            return False
+
         # 主通道: Server酱
         if self._send_serverchan(title, content):
+            self._send_count_today += 1
+            logger.info(f"今日推送: {self._send_count_today}/{self.daily_limit}")
             return True
         # 备用通道: PushPlus
         if self._send_pushplus(title, content):
+            self._send_count_today += 1
+            logger.info(f"今日推送(PushPlus): {self._send_count_today}/{self.daily_limit}")
             return True
         logger.warning(f"所有通知通道发送失败: {title}")
         return False
@@ -186,8 +217,8 @@ class WeChatNotifier:
         if n == 0:
             return self._send(
                 f"V35选股 · {datetime.now().strftime('%m/%d')} · 无符合条件的股票",
-                f"> 股票池: {stock_pool_name}\n\n当前市场环境下无满足全部条件的标的，建议观望。"
-            )
+                f"> 股票池: {stock_pool_name}\n\n当前市场环境下无满足全部条件的标的，建议观望。",
+                priority=self.PRIORITY_DAILY)
 
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
         timing_str = "未获取"
@@ -232,7 +263,7 @@ class WeChatNotifier:
 *V35 量化选股系统 · 自动推送 · 仅供参考不构成投资建议*"""
 
         title = f"V35选股 {datetime.now().strftime('%m/%d')} · Top{n} · {stock_pool_name}"
-        return self._send(title, content)
+        return self._send(title, content, priority=self.PRIORITY_DAILY)
 
     def send_risk_alert(
         self,
@@ -258,7 +289,7 @@ class WeChatNotifier:
             level=level,
             detail=detail,
         )
-        return self._send(title, content)
+        return self._send(title, content, priority=self.PRIORITY_RISK)
 
     def send_market_timing_change(
         self,
@@ -294,7 +325,7 @@ class WeChatNotifier:
 *V35 量化选股系统 · 择时信号*"""
 
         title = f"择时变更: {old_regime} → {new_regime}"
-        return self._send(title, content)
+        return self._send(title, content, priority=self.PRIORITY_TIMING)
 
     def send_weekly_report(
         self,
@@ -338,9 +369,10 @@ class WeChatNotifier:
         ) + "\n".join(rows) + "\n\n---\n*V35 量化选股系统 · 周报 · 仅供参考*"
 
         title = f"V35周报 {date_range} · Top{top_n}"
-        return self._send(title, content)
+        return self._send(title, content, priority=self.PRIORITY_WEEKLY)
 
     def send_simple(self, title: str, content: str) -> bool:
+        """通用发送接口（默认每日优先级）"""
         """通用发送接口"""
         return self._send(title, content)
 
