@@ -27,7 +27,14 @@ dependencies:
   - beautifulsoup4
   - matplotlib
   - shap
+  - statsmodels
+  - pyarrow
+  - python-dotenv
   - pip
   - pip:
     - tushare
     - akshare
+    - transformers
+    - sentencepiece
+    - ftfy
+    - baostock
