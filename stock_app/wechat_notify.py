@@ -114,12 +114,17 @@ class WeChatNotifier:
         return True
 
     # ── 核心发送 ─────────────────────────────────────────────────────
+    def _get_sendkey(self):
+        """动态读取 SendKey（支持运行时更新，无需重启）"""
+        return WECHAT_NOTIFY_CONFIG.get('sendkey', '') or os.environ.get('SERVERCHAN_SENDKEY', '')
+
     def _send_serverchan(self, title: str, content: str) -> bool:
         """Server酱 主通道"""
-        if not self.sendkey:
+        sendkey = self._get_sendkey()
+        if not sendkey:
             return False
         try:
-            url = f"https://sctapi.ftqq.com/{self.sendkey}.send"
+            url = f"https://sctapi.ftqq.com/{sendkey}.send"
             resp = self._session.post(url, json={
                 'title': title,
                 'desp': content,

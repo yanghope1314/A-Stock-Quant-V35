@@ -864,6 +864,14 @@
                 <i class="fas fa-save"></i>
             </button>
         </div>
+        <div class="ctrl-group" style="display:flex; align-items:center; gap:8px;">
+            <span class="ctrl-label">微信通知 <a href="https://sct.ftqq.com" target="_blank" title="去 sct.ftqq.com 注册获取 SendKey" style="color:#07C160;text-decoration:none;font-size:11px">ⓘ</a></span>
+            <input class="ctrl-input" id="sendKeyInput" type="password" placeholder="Server酱 SendKey" style="width:150px;">
+            <button class="btn-train" onclick="saveSendKey()" style="padding: 8px 12px;" title="保存 SendKey，选股结果推送微信">
+                <i class="fas fa-save"></i>
+            </button>
+            <span id="notifyBadge" style="font-size:11px;color:var(--text3)">未配置</span>
+        </div>
         <div class="ctrl-group">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer">
                 <input type="checkbox" id="trainCheck" style="accent-color:var(--teal)">
@@ -911,14 +919,14 @@
         </div>
     </div>
 
-    <!-- 因子IC热力图 + 通知面板 -->
+    <!-- 因子IC热力图 + 通知面板（选股完成后显示） -->
     <div class="charts-row" id="heatmapRow" style="display:none">
         <div class="chart-card" style="flex: 2;">
             <div class="chart-title">因子 IC 热力图 <span class="chart-live-badge">V35</span></div>
             <div id="icHeatmap" style="width:100%;height:300px;"></div>
         </div>
         <div class="chart-card" style="flex: 1;">
-            <div class="chart-title">微信通知 <span class="chart-live-badge" id="notifyBadge">未配置</span></div>
+            <div class="chart-title">微信通知 <span class="chart-live-badge">已配置在顶部栏</span></div>
             <div style="padding:16px;font-size:13px;color:var(--text2);line-height:1.8">
                 <p>📱 <b>Server酱</b> — 选股结果免费推送到微信</p>
                 <p style="margin-top:8px;font-size:12px;color:var(--text3)">
@@ -933,7 +941,7 @@
                     </button>
                 </div>
                 <p style="margin-top:8px;font-size:11px;color:var(--text3)">
-                    ⚡ 保存后重启服务生效 · 免费版每日5条(优先推送预测结果) · 23:00-07:00免打扰
+                    ⚡ 保存即生效 · 免费版每日5条(优先推送预测结果) · 23:00-07:00免打扰
                 </p>
             </div>
         </div>
@@ -1051,7 +1059,8 @@
                 <div style="color:var(--text2);font-size:13px;margin-top:4px">
                     访问 <a href="https://sct.ftqq.com" target="_blank" style="color:var(--blue)">sct.ftqq.com</a> 注册 Server酱，
                     获取 SendKey。<br>
-                    在下方 <b style="color:var(--gold)">微信通知</b> 面板中填入，选股结果自动推送到微信。
+                    在上方 <b style="color:#07C160">微信通知</b> 输入框中粘贴，点击 💾 保存即可。<br>
+                    选股完成后自动推送结果到微信。
                 </div>
             </div>
         </div>
@@ -1256,10 +1265,11 @@
             });
             const d = await res.json();
             if (d.status === 'success') {
-                document.getElementById('notifyBadge').textContent = '已配置';
-                document.getElementById('notifyBadge').style.background = 'rgba(0,214,143,.2)';
-                document.getElementById('notifyBadge').style.color = 'var(--green)';
-                showToast('保存成功', 'SendKey已保存，重启服务后微信通知生效', 'success');
+                const badge = document.getElementById('notifyBadge');
+                badge.textContent = '已配置';
+                badge.style.color = '#07C160';
+                badge.style.fontWeight = '600';
+                showToast('保存成功', 'SendKey已保存，微信通知已生效', 'success');
                 input.value = '';
             } else {
                 showToast('保存失败', d.message || '未知错误', 'error');

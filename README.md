@@ -106,9 +106,9 @@ TUSHARE_TOKEN=your_tushare_token
 
 ### 4. Configure WeChat Notifications (Optional) | 配置微信通知（可选）
 
-**Method 1 (Recommended)**: After startup, paste your ServerChan SendKey in the "WeChat Notify" panel and click Save.
+**Method 1 (Recommended)**: After startup, paste your Server酱 SendKey in the **top bar** (next to API Token) and click Save. Takes effect immediately, no restart needed.
 
-**方法一（推荐）**: 启动后在 Web 界面「微信通知」面板粘贴 Server酱 SendKey，点击保存。
+**方法一（推荐）**: 启动后在 **顶部控制栏**「微信通知」输入框粘贴 Server酱 SendKey，点击保存。即时生效，无需重启。
 
 **Method 2**: Add to `.env`:
 
@@ -139,29 +139,32 @@ python manage.py runserver
 ```
 
 The script will:
-- Check Python & auto-install missing dependencies
-- Warn if Tushare Token is not yet configured
-- Launch the server & auto-open browser at `http://127.0.0.1:8000`
+- Auto-detect the correct Conda environment (scans all envs for required packages)
+- Run database migrations automatically
+- Launch the server with `--noreload` (single process, faster startup)
+- Poll port 8000 and auto-open browser when server is ready
+- ML models load on first startup (20-40s), subsequent starts are faster
 
 > Click "Start Analysis" in the Web UI to begin | 在网页中点击「开始选股分析」即可
+> First analysis takes 60-90s (Tushare API data fetch), subsequent runs use local cache.
 
 ### First-Time User Flow | 新用户操作流程
 
 1. Register at [tushare.pro](https://tushare.pro) → get your API Token
-2. Launch with `start.bat` / `start.sh`
-3. Paste Token in the top bar of the Web UI → click Save
-4. (Optional) Paste ServerChan SendKey in the "WeChat" panel → click Save
-5. Click "Start Analysis" — the system fetches data, trains models, and outputs stock picks
-6. Check WeChat for daily push notifications
+2. Register at [sct.ftqq.com](https://sct.ftqq.com) → get your SendKey (optional, for WeChat push)
+3. Launch with `start.bat` / `start.sh`
+4. Paste Token in the top bar → click Save. Paste SendKey next to it → click Save.
+5. Click "Start Analysis" — system fetches data, trains models, outputs stock picks
+6. Analysis results auto-pushed to WeChat (if SendKey configured)
 
 ### 新用户操作流程
 
 1. 去 [tushare.pro](https://tushare.pro) 注册 → 获取 API Token
-2. 双击 `start.bat`（Windows）或运行 `bash start.sh`（Mac/Linux）
-3. 在网页顶部输入框粘贴 Token → 点击保存
-4. （可选）在「微信通知」面板粘贴 Server酱 SendKey → 点击保存
+2. 去 [sct.ftqq.com](https://sct.ftqq.com) 注册 → 获取 SendKey（可选，用于微信推送）
+3. 双击 `start.bat`（Windows）或运行 `bash start.sh`（Mac/Linux）
+4. 在顶部栏粘贴 Token → 保存。旁边粘贴 SendKey → 保存。
 5. 点击「开始选股分析」→ 系统自动拉数据、训练模型、输出选股结果
-6. 微信接收每日推送通知
+6. 选股结果自动推送到微信（需配置 SendKey）
 
 ---
 
@@ -192,7 +195,9 @@ A-Stock-Quant-V35/
 │       └── index.html                  # Frontend Dashboard
 ├── models/                              # Trained Model Weights (gitignored)
 ├── requirements.txt                     # Python Dependencies
-├── manage.py                            # Django Entry Point
+├── manage.py                            # Django Entry Point + Smart Launcher
+├── start.bat / start.sh                 # One-Click Start Scripts (auto-detect env)
+├── _open_browser.py                     # Browser Auto-Open Helper (port polling)
 ├── .gitignore                           # Security Exclusions
 └── .env                                 # Token Config (gitignored, never committed)
 ```
@@ -242,8 +247,8 @@ A: Check Tushare Token is saved correctly. Click "Check Connection" to verify ba
 
 **Q: Not receiving WeChat notifications? | 微信收不到通知？**
 
-A: Verify ServerChan SendKey is saved, restart Django. Quiet hours (23:00-07:00) suppress all pushes.
-确认 Server酱 SendKey 已保存，重启 Django 服务。免打扰时段(23:00-07:00)不推送。
+A: Verify SendKey is saved in the top bar (shows "已配置"). Check Server酱 dashboard for quota. Quiet hours (23:00-07:00) suppress pushes.
+确认顶部栏 SendKey 已保存（显示"已配置"）。检查 Server酱 后台是否超限。免打扰时段(23:00-07:00)不推送。
 
 **Q: Model training is slow? | 模型训练很慢？**
 

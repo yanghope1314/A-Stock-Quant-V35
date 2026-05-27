@@ -1760,12 +1760,13 @@ def get_real_stock_data(start_date: str = None, end_date: str = None,
     包含：日线/基本面/资金流/涨跌停/北向/质押/财务/业绩预告
     """
     if end_date is None:
+        logger.info(f"  [1/6] 获取最新交易日...")
         end_date = get_latest_trading_date()
     if start_date is None:
         start_date = (datetime.strptime(end_date, '%Y%m%d') -
                       timedelta(days=lookback_months * 30)).strftime('%Y%m%d')
 
-    logger.info(f"📊 获取全量数据: {stock_pool} | {start_date}~{end_date}")
+    logger.info(f"[2/6] 获取全量数据: {stock_pool} | {start_date}~{end_date}")
     
     # ── 数据缓存机制 (Grok 优化) ──
     cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data_cache')
@@ -2417,10 +2418,12 @@ def dual_verify_stocks(request):
     try:
         body = json.loads(request.body) if request.body else {}
         max_stocks = body.get('max_stocks', 60)
+        pool = DATA_SOURCE_CONFIG.get('stock_pool', 'csi1000')
+        logger.info(f"=== 收到选股请求: max_stocks={max_stocks}, pool={pool}, train={body.get('train', False)} ===")
 
         df = get_real_stock_data(
             start_date=None, end_date=None,
-            stock_pool=DATA_SOURCE_CONFIG.get('stock_pool', 'csi1000'),
+            stock_pool=pool,
             lookback_months=12
         )
         if df is None or df.empty:
@@ -2930,15 +2933,6 @@ def dual_verify_stocks(request):
         # 置信度：results 的 confidence 均值
         _market_confidence = _results_mean('confidence') or 0.0
 
-        # ══════════════════════════════════════════════════════════════
-        # 【私募核心】择时数据覆写：用市场择时信号覆盖统计值
-        # 原因：selected 的统计均值反映的是"选出来这批股票"的质量，
-        # 而非"当前市场环境"的好坏。择时信号才是市场状态的真实判断。
-        # ══════════════════════════════════════════════════════════════
-        _market_score     = market_timing.get('market_score', _market_score or 50.0)
-        _market_confidence = 100.0 if market_timing.get('trend_allowed', True) else 40.0
-        _volatility       = market_timing.get('volatility', _volatility or 0.0) * 100  # → %
-
         # 60日趋势：selected 的 pmt_return_60d 中位数 ×100 转%
         _trend_60d = _col_stat('pmt_return_60d', 'median', multiplier=100.0, fallback=None)
         # 20日趋势：selected 的 pmt_return_20d 中位数 ×100 转%
@@ -2949,12 +2943,21 @@ def dual_verify_stocks(request):
         if _trend_20d is None:
             _trend_20d = 0.0
 
-        # 波动率：selected 的 volat_hist_20d 中位数 ×100 转%
+        # 波动率：selected 的 volat_hist_20d 中位数 ×100 转%（必须在择时覆写前计算）
         _volatility = _col_stat('volat_hist_20d', 'median', multiplier=100.0, fallback=None)
         if _volatility is None or _volatility == 0.0:
             # 兜底：用 RSI 离散度推算隐含波动（RSI std × 0.3）
             _rsi_s = pd.to_numeric(selected.get('rsi', pd.Series(dtype=float)), errors='coerce').dropna()
             _volatility = round(float(_rsi_s.std()) * 0.3, 2) if len(_rsi_s) > 3 else 1.5
+
+        # ══════════════════════════════════════════════════════════════
+        # 【私募核心】择时数据覆写：用市场择时信号覆盖统计值
+        # 原因：selected 的统计均值反映的是"选出来这批股票"的质量，
+        # 而非"当前市场环境"的好坏。择时信号才是市场状态的真实判断。
+        # ══════════════════════════════════════════════════════════════
+        _market_score     = market_timing.get('market_score', _market_score or 50.0)
+        _market_confidence = 100.0 if market_timing.get('trend_allowed', True) else 40.0
+        _volatility       = market_timing.get('volatility', _volatility or 0.0) * 100  # → %
 
         # 成交量比：selected 的 vol_ratio_raw 中位数
         _vol_ratio = _col_stat('vol_ratio_raw', 'median', fallback=1.0)
@@ -2990,7 +2993,7 @@ def dual_verify_stocks(request):
         _notify_async('send_stock_report',
                        stocks=results,
                        market_timing=market_timing,
-                       stock_pool_name=stock_pool)
+                       stock_pool_name=pool)
 
         return JsonResponse(_make_json_serializable({
             'status': 'success',
@@ -3147,7 +3150,13 @@ def save_sendkey(request):
                     f.write(f'{k}={v}\n')
 
             os.environ['SERVERCHAN_SENDKEY'] = sendkey
-            return JsonResponse({'status': 'success', 'message': 'SendKey 保存成功，重启服务后微信通知生效'})
+            # 同步更新运行时配置，避免必须重启
+            try:
+                from . import config_v19
+                config_v19.WECHAT_NOTIFY_CONFIG['sendkey'] = sendkey
+            except Exception:
+                pass
+            return JsonResponse({'status': 'success', 'message': 'SendKey 保存成功，微信通知已生效'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 

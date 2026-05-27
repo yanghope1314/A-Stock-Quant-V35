@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 title A-Stock Quant System V35
 
 echo.
@@ -64,7 +65,7 @@ goto TOKEN_CHECK
 
 :ASK_PICK
 echo.
-set /p PICK=Select environment (1-%ENV_COUNT%): 
+set /p PICK=Select environment (1-%ENV_COUNT%):
 if "%PICK%"=="" (
     echo No selection, exiting.
     pause
@@ -101,15 +102,25 @@ if %HAS_TOKEN% equ 0 (
 )
 
 echo.
-echo [Starting] Launching server...
-echo.
-echo   Open in browser: http://127.0.0.1:8000
-echo   Press Ctrl+C to stop
+echo [Starting] Launching server (--noreload, single process)...
+echo   Model loading takes 20-40s, browser will open when ready.
+echo   Press Ctrl+C to stop.
 echo.
 
-start "" /b cmd /c "timeout /t 3 /nobreak >/dev/null && start http://127.0.0.1:8000"
+:: Step 1: Run Django migrations silently
+echo [1/2] Running database migrations...
+"%USE_PYTHON%" manage.py migrate --noinput >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] Migration had issues, continuing anyway...
+)
 
-"%USE_PYTHON%" manage.py runserver
+:: Step 2: Start server in a new window
+echo [2/2] Starting Django server...
+start "A-Stock Quant Server" "%USE_PYTHON%" manage.py runserver --noreload
+
+:: Step 3: Wait for server and open browser
+echo Waiting for server to be ready...
+"%USE_PYTHON%" _open_browser.py
 
 pause
 exit /b %errorlevel%

@@ -58,9 +58,9 @@ def main():
         
         print(f"🌐 系统将运行在 http://127.0.0.1:{port}")
         
-        # 2. 运行 Django 开发服务器 (使用 subprocess 异步启动，防止 reloader 阻塞并确保干净启动)
+        # 2. 运行 Django 开发服务器 (--noreload 避免双进程，加速 AI 模型加载)
         import subprocess
-        server_process = subprocess.Popen([sys.executable, sys.argv[0], "runserver", f"0.0.0.0:{port}"])
+        server_process = subprocess.Popen([sys.executable, sys.argv[0], "runserver", "--noreload", f"0.0.0.0:{port}"])
         
         # 3. 等待并打开浏览器
         open_browser(port)
