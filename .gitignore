@@ -28,7 +28,7 @@ local_settings.py
 staticfiles/
 
 # ML/Quant
-models/
+/models/
 factor_cache/
 factor_data/
 data_cache/
