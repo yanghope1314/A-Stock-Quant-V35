@@ -84,7 +84,27 @@ pip install -r requirements.txt
 > Note: `torch` and `pyg` are best installed via conda. If pip install fails on these, use Method 1.
 > 注意：`torch` 和 `pyg` 建议通过 conda 安装。如果 pip 失败请用方式一。
 
-### 3. Configure Tushare Token | 配置 Tushare Token
+### 3. Download AI Model | 下载 AI 模型
+
+NLP sentiment model (RoBERTa, ~400MB) is **not included** in the repo. Download before first use:
+
+```bash
+python stock_app/download_sentiment_model.py
+```
+
+Or manually:
+```bash
+# From HuggingFace (overseas)
+huggingface-cli download uer/roberta-base-finetuned-jd-binary-chinese --local-dir stock_app/models/roberta-jd-binary
+
+# From HF Mirror (China mainland, faster)
+# Script uses hf-mirror.com by default
+```
+
+> Without the model, the system runs normally but sentiment analysis is disabled.
+> 没有模型时系统正常运行，但情感分析功能不可用。
+
+### 4. Configure Tushare Token | 配置 Tushare Token
 
 **Method 1 (Recommended)**: After startup, paste your Token in the Web UI top bar and click Save.
 
@@ -104,7 +124,7 @@ TUSHARE_TOKEN=your_tushare_token
 > **Recommended points ≥ 2000** for full functionality (money flow, limit data, margin, shareholder analysis). Points below threshold auto-degrade gracefully.
 > **建议积分 ≥ 2000** 以使用全部高级接口。积分不足时系统自动降级。
 
-### 4. Configure WeChat Notifications (Optional) | 配置微信通知（可选）
+### 5. Configure WeChat Notifications (Optional) | 配置微信通知（可选）
 
 **Method 1 (Recommended)**: After startup, paste your Server酱 SendKey in the **top bar** (next to API Token) and click Save. Takes effect immediately, no restart needed.
 
@@ -124,7 +144,7 @@ SERVERCHAN_SENDKEY=your_sendkey
 > Free tier: 5 messages/day. System auto-prioritizes: Risk Alerts > Timing > Picks > Weekly.
 > 免费版每日5条，系统按优先级自动推送：风险告警 > 择时 > 选股 > 周报。
 
-### 5. Launch (One-Click) | 一键启动
+### 6. Launch (One-Click) | 一键启动
 
 **Windows** — double-click `start.bat`
 
@@ -151,20 +171,20 @@ The script will:
 ### First-Time User Flow | 新用户操作流程
 
 1. Register at [tushare.pro](https://tushare.pro) → get your API Token
-2. Register at [sct.ftqq.com](https://sct.ftqq.com) → get your SendKey (optional, for WeChat push)
-3. Launch with `start.bat` / `start.sh`
-4. Paste Token in the top bar → click Save. Paste SendKey next to it → click Save.
-5. Click "Start Analysis" — system fetches data, trains models, outputs stock picks
-6. Analysis results auto-pushed to WeChat (if SendKey configured)
+2. Install dependencies: `conda env create -f environment.yml`
+3. Download AI model: `python stock_app/download_sentiment_model.py`
+4. Launch with `start.bat` / `start.sh`
+5. Paste Token in the top bar → click Save. (Optional) Paste SendKey for WeChat push.
+6. Click "Start Analysis" — system fetches data, trains models, outputs stock picks
 
 ### 新用户操作流程
 
 1. 去 [tushare.pro](https://tushare.pro) 注册 → 获取 API Token
-2. 去 [sct.ftqq.com](https://sct.ftqq.com) 注册 → 获取 SendKey（可选，用于微信推送）
-3. 双击 `start.bat`（Windows）或运行 `bash start.sh`（Mac/Linux）
-4. 在顶部栏粘贴 Token → 保存。旁边粘贴 SendKey → 保存。
-5. 点击「开始选股分析」→ 系统自动拉数据、训练模型、输出选股结果
-6. 选股结果自动推送到微信（需配置 SendKey）
+2. 安装依赖：`conda env create -f environment.yml`
+3. 下载AI模型：`python stock_app/download_sentiment_model.py`
+4. 双击 `start.bat`（Windows）或运行 `bash start.sh`（Mac/Linux）
+5. 在顶部栏粘贴 Token → 保存。（可选）粘贴 SendKey 用于微信推送
+6. 点击「开始选股分析」→ 系统自动拉数据、训练模型、输出选股结果
 
 ---
 
