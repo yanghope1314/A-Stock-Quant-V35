@@ -107,18 +107,27 @@ echo   Model loading takes 20-40s, browser will open when ready.
 echo   Press Ctrl+C to stop.
 echo.
 
-:: Step 1: Run Django migrations silently
+:: Step 1: Run Django migrations (show errors for debugging)
 echo [1/2] Running database migrations...
-"%USE_PYTHON%" manage.py migrate --noinput >nul 2>&1
+"%USE_PYTHON%" manage.py migrate --noinput
 if errorlevel 1 (
-    echo [WARN] Migration had issues, continuing anyway...
+    echo [ERROR] Migration failed! See the error above.
+    echo.
+    pause
+    exit /b 1
 )
+echo [OK] Migrations complete.
 
-:: Step 2: Start server in a new window
+:: Step 2: Start server directly (NOT in separate window — so errors are visible)
 echo [2/2] Starting Django server...
-start "A-Stock Quant Server" "%USE_PYTHON%" manage.py runserver --noreload
+echo   Model loading takes 20-40s, browser will open when ready.
+echo   Press Ctrl+C to stop.
+echo.
 
-:: Step 3: Wait for server and open browser
+:: Launch server in background via subprocess, wait for it, then open browser
+start "A-Stock Quant Server" cmd /k ""%USE_PYTHON%" manage.py runserver --noreload"
+
+:: Wait for server and open browser
 echo Waiting for server to be ready...
 "%USE_PYTHON%" _open_browser.py
 

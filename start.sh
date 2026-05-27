@@ -128,9 +128,19 @@ if ! grep -q "TUSHARE_TOKEN" .env 2>/dev/null; then
     echo ""
 fi
 
+# ── Run migrations ──
+echo ""
+echo "[1/2] Running database migrations..."
+"$USE_PYTHON" manage.py migrate --noinput
+if [ $? -ne 0 ]; then
+    echo "[ERROR] Migration failed! See the error above."
+    exit 1
+fi
+echo "[OK] Migrations complete."
+
 # ── Launch ──
 echo ""
-echo "[Starting] Launching server..."
+echo "[2/2] Starting Django server..."
 echo "[启动] 正在启动服务器..."
 echo ""
 echo "  Open in browser: http://127.0.0.1:8000"
